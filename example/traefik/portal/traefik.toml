@@ -1,0 +1,34 @@
+defaultEntryPoints = ["https"]
+
+[entryPoints]
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+      [[entryPoints.https.tls.certificates]]
+      certFile = "/etc/ssl/server.crt"
+      keyFile = "/etc/ssl/server.key"
+  [entryPoints.https.auth.forward]
+  address = "http://authelia/api/verify?redirect=https://auth.example.com:8080/"
+
+[file]
+
+[frontends]
+  [frontends.frontend1]
+  backend = "backend1"
+    [frontends.frontend1.routes.home]
+    rule = "Host:home.example.com"
+    [frontends.frontend1.routes.traefik]
+    rule = "Host:traefik.example.com"
+  [frontends.frontend2]
+  backend = "backend2"
+    [frontends.frontend2.routes.auth_domain]
+    rule = "Host:login.example.com"
+
+[backends]
+  [backends.backend1]
+    [backends.backend1.servers.nginx]
+    url = "http://nginx-backend"
+  [backends.backend2]
+    [backends.backend2.servers.auth]
+    url = "http://nginx-authelia"
+

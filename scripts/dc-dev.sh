@@ -10,7 +10,7 @@ docker-compose \
   -f example/redis/docker-compose.yml \
   -f example/nginx/authelia/docker-compose.yml \
   -f example/nginx/backend/docker-compose.yml \
-  -f example/nginx/portal/docker-compose.yml \
+  -f example/traefik/portal/docker-compose.yml \
   -f example/smtp/docker-compose.yml \
   -f example/httpbin/docker-compose.yml \
   -f example/ldap/docker-compose.admin.yml \

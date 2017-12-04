@@ -66,7 +66,9 @@ export default function (vars: ServerVariables) {
       .catch(Exceptions.DomainAccessDenied, ErrorReplies
         .replyWithError403(req, res, vars.logger))
       // The user is not yet authenticated -> 401
-      .catch(ErrorReplies.replyWithError401(req, res, vars.logger));
+      .catch(function(err) {
+        res.redirect("https://login.example.com:8080");
+      });
   };
 }
 
