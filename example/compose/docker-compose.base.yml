@@ -2,3 +2,8 @@ version: '2'
 networks:
   example-network:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+      -   
+        subnet: 172.16.121.0/24

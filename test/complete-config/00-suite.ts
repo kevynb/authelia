@@ -8,6 +8,7 @@ const includes = [
   "example/compose/redis/docker-compose.yml",
   "example/compose/nginx/backend/docker-compose.yml",
   "example/compose/nginx/portal/docker-compose.yml",
+  "example/compose/nginx/clients/docker-compose.yml",
   "example/compose/smtp/docker-compose.yml",
   "example/compose/httpbin/docker-compose.yml",
   "example/compose/ldap/docker-compose.yml"

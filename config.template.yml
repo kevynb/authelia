@@ -149,9 +149,10 @@ access_control:
   # This will allow bypassing of all authentication on specified
   # domains for respective addresses.
   whitelisted:
-    whitelisted.example.com:
-    - 10.10.10.1
-    - 10.10.10.0/24
+    admin.example.com:
+      - 172.16.121.10
+      - 10.10.10.1
+      - 10.10.10.0/24
 
   # The rules that apply to anyone.
   # The value is a list of rules.
