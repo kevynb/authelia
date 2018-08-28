@@ -125,7 +125,6 @@ access_control:
   # in the `any`, `groups` or `users` category.
   default_policy: deny
 
-  # The rules applied to anyone.
   # The value is a list of rules.
   any:
     - domain: public.example.com
@@ -171,8 +170,8 @@ access_control:
           - '^/users/bob/.*$'
 
 network_binding:
-  '10.0.0.1': john
-  '10.0.0.2': harry
+  '172.16.121.10': john
+  '172.16.121.11': harry
 
 whitelist_access_control:
   default_policy: deny
