@@ -86,26 +86,6 @@ authentication_backend:
   ##   path: ./users_database.yml
 
 
-# Authentication methods
-#
-# Authentication methods can be defined per subdomain.
-# There are currently two available methods: "single_factor" and "two_factor"
-#
-# Note: by default a domain uses "two_factor" method.
-#
-# Note: 'per_subdomain_methods' is a dictionary where keys must be subdomains and
-# values must be one of the two possible methods.
-#
-# Note: 'per_subdomain_methods' is optional.
-#
-# Note: authentication_methods is optional. If it is not set all sub-domains
-# are protected by two factors.
-authentication_methods:
-  default_method: two_factor
-  per_subdomain_methods:
-    single_factor.example.com: single_factor
-
-
 # Access Control
 #
 # Access control is a set of rules you can use to restrict user access to certain 
@@ -139,7 +119,7 @@ authentication_methods:
 # other one.
 #
 access_control:
-  # Default policy can either be `allow` or `deny`.
+  # Default policy can either be `deny`, `one_factor` or `two_factor`.
   # It is the policy applied to any resource if it has not been overriden
   # in the `any`, `groups` or `users` category.
   default_policy: deny
@@ -147,8 +127,12 @@ access_control:
   # The rules that apply to anyone.
   # The value is a list of rules.
   any:
+    - domain: noauth.example.com
+      policy: no_auth
+    - domain: single_factor.example.com
+      policy: one_factor
     - domain: public.example.com
-      policy: allow
+      policy: two_factors
   
   # Group-based rules. The key is a group name and the value
   # is a list of rules.
@@ -156,13 +140,13 @@ access_control:
     admin:
       # All resources in all domains
       - domain: '*.example.com'
-        policy: allow
+        policy: two_factors
       # Except mx2.mail.example.com (it restricts the first rule)
       - domain: 'mx2.mail.example.com'
         policy: deny
     dev:
       - domain: dev.example.com
-        policy: allow
+        policy: two_factors
         resources:
           - '^/groups/dev/.*$'
   
@@ -171,22 +155,36 @@ access_control:
   users:
     john:
       - domain: dev.example.com
-        policy: allow
+        policy: two_factors
         resources:
           - '^/users/john/.*$' 
     harry:
       - domain: dev.example.com
-        policy: allow
+        policy: two_factors
         resources:
           - '^/users/harry/.*$'
     bob:
       - domain: '*.mail.example.com'
-        policy: allow
+        policy: two_factors
       - domain: 'dev.example.com'
-        policy: allow
+        policy: two_factors
         resources:
           - '^/users/bob/.*$'
 
+# This policy applies to whitelisted users.
+# In this case one_factor means the user is automatically authenticated
+# and two_factors mean he needs to validate only second factor.
+whitelist_access_control:
+  default_policy: deny
+
+  any:
+    domain: '*.internal.example.com'
+    policy: one_factor
+    domain: '*.secure.example.com'
+    policy: two_factors
+
+  groups: {}
+  users: {}
 
 # Configuration of session cookies
 # 
