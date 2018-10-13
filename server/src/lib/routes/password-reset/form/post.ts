@@ -39,7 +39,7 @@ export default function (vars: ServerVariables) {
       .then(function () {
         vars.logger.info(req, "Password reset for user '%s'",
           authSession.identity_check.userid);
-        AuthenticationSessionHandler.reset(req);
+        AuthenticationSessionHandler.reset(req, vars.logger);
         res.status(204);
         res.send();
         return BluebirdPromise.resolve();

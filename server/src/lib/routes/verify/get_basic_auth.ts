@@ -4,9 +4,8 @@ import ObjectPath = require("object-path");
 import { ServerVariables } from "../../ServerVariables";
 import { AuthenticationSession } from "../../../../types/AuthenticationSession";
 import { DomainExtractor } from "../../utils/DomainExtractor";
-import { MethodCalculator } from "../../authentication/MethodCalculator";
-import { WhitelistValue } from "../../authentication/whitelist/WhitelistHandler";
 import AccessControl from "./access_control";
+import { Level } from "../../authentication/Level";
 
 export default function (req: Express.Request, res: Express.Response,
   vars: ServerVariables, authorizationHeader: string)
@@ -21,13 +20,6 @@ export default function (req: Express.Request, res: Express.Response,
       domain = DomainExtractor.fromUrl(originalUrl);
       originalUri =
         ObjectPath.get<Express.Request, string>(req, "headers.x-original-uri");
-      const authenticationMethod =
-        MethodCalculator.compute(vars.config.authentication_methods, domain);
-
-      if (authenticationMethod != "single_factor") {
-        return BluebirdPromise.reject(new Error("This domain is not protected with single factor. " +
-          "You cannot log in with basic authentication."));
-      }
 
       const base64Re = new RegExp("^Basic ((?:[A-Za-z0-9+/]{4})*" +
         "(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$");
@@ -52,7 +44,9 @@ export default function (req: Express.Request, res: Express.Response,
       return vars.usersDatabase.checkUserPassword(username, password);
     })
     .then(function (groupsAndEmails) {
-      return AccessControl(req, vars, domain, originalUri, username, groupsAndEmails.groups, WhitelistValue.NOT_WHITELISTED)
+      const resource = {domain, path: originalUri};
+      const identity = {user: username, groups: groupsAndEmails.groups};
+      return AccessControl(req, resource, identity, Level.FIRST_FACTOR, vars)
         .then(() => BluebirdPromise.resolve({
           username: username,
           groups: groupsAndEmails.groups

@@ -5,17 +5,12 @@ import Endpoints = require("../../../../../shared/api");
 import BluebirdPromise = require("bluebird");
 import { AuthenticationSession } from "../../../../types/AuthenticationSession";
 import { AuthenticationSessionHandler } from "../../AuthenticationSessionHandler";
-import { WhitelistValue } from "../../authentication/whitelist/WhitelistHandler";
 import Constants = require("../../../../../shared/constants");
 import Endpoint = require("../../../../../shared/api");
 import Util = require("util");
 import { ServerVariables } from "../../ServerVariables";
-
-function getRedirectParam(req: express.Request) {
-  return req.query[Constants.REDIRECT_QUERY_PARAM] != "undefined"
-    ? req.query[Constants.REDIRECT_QUERY_PARAM]
-    : undefined;
-}
+import { Level } from "../../authentication/Level";
+import { getRedirectParam } from "../helpers";
 
 function redirectToSecondFactorPage(req: express.Request, res: express.Response) {
   const redirectUrl = getRedirectParam(req);
@@ -43,45 +38,18 @@ function renderFirstFactor(res: express.Response) {
 }
 
 function redirect(req: express.Request, res: express.Response, authSession: AuthenticationSession) {
-  if (authSession.first_factor) {
-    if (authSession.second_factor)
-      redirectToService(req, res);
-    else
-      redirectToSecondFactorPage(req, res);
-    return;
+  if (authSession.authentication_level == Level.FIRST_FACTOR) {
+    redirectToSecondFactorPage(req, res);
+  } else {
+    renderFirstFactor(res);
   }
-  renderFirstFactor(res);
-  return;
 }
 
 export default function (vars: ServerVariables) {
   return function (req: express.Request, res: express.Response): BluebirdPromise<void> {
     return new BluebirdPromise(function (resolve, reject) {
       const authSession = AuthenticationSessionHandler.get(req, vars.logger);
-      // If cookie has userid and is whitelisted, user probably doesn't have whitelist access control
-      // or is deliberately navigating to the auth page
-      if (authSession.userid && authSession.whitelisted > WhitelistValue.NOT_WHITELISTED) {
-        return redirect(req, res, authSession);
-      }
-
-      // Check for whitelisted user on request and handle auto-login
-      vars.whitelistHandler.isWhitelisted(req.ip, vars.usersDatabase)
-        .then((user) => {
-          if (user) {
-            vars.logger.info(req, "Whitelisted IP matched to user \"%s\"", user);
-            vars.whitelistHandler.loginWhitelistUser(user, req, vars)
-              .then(() => {
-                redirectToService(req, res);
-                return resolve();
-              });
-          } else {
-            redirect(req, res, authSession);
-          }
-        })
-        .catch(() => {
-          renderFirstFactor(res);
-          resolve();
-        });
+      return redirect(req, res, authSession);
     });
   };
 }

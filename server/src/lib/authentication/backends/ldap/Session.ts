@@ -7,7 +7,6 @@ import { Winston } from "../../../../../types/Dependencies";
 import Util = require("util");
 import { HashGenerator } from "../../../utils/HashGenerator";
 import { IConnector } from "./connector/IConnector";
-import { UserAndNetworkAddresses } from "../UserAndNetworkAddresses";
 
 export class Session implements ISession {
   private userDN: string;
@@ -104,31 +103,6 @@ export class Session implements ISession {
         }
         return BluebirdPromise.reject(new Error(
           Util.format("No user DN found for user '%s'", username)));
-      });
-  }
-
-  searchWhitelist(): BluebirdPromise<UserAndNetworkAddresses[]> {
-    const that = this;
-    const users_filter = this.options.users_filter.substr(0, this.options.users_filter.indexOf("="));
-
-    const query = {
-      scope: "sub",
-      attributes: [users_filter, this.options.network_whitelist_attribute],
-      filter: `(${this.options.network_whitelist_attribute}=*)`,
-    };
-
-    return that.connector.searchAsync(that.usersSearchBase, query)
-      .then((users) => {
-        const normalisedUsers = users.map((user) => {
-          return {
-            user: user[users_filter],
-            network_addresses: user[that.options.network_whitelist_attribute],
-          };
-        });
-        return BluebirdPromise.resolve(normalisedUsers);
-      })
-      .catch((err: Error) => {
-        return BluebirdPromise.reject(new exceptions.LdapError("Error while searching whitelist. " + err.stack));
       });
   }
 

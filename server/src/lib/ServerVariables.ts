@@ -7,7 +7,7 @@ import { IRegulator } from "./regulation/IRegulator";
 import { Configuration } from "./configuration/schema/Configuration";
 import { IAccessController } from "./access_control/IAccessController";
 import { IUsersDatabase } from "./authentication/backends/IUsersDatabase";
-import { IWhitelistHandler } from "./authentication/whitelist/IWhitelistHandler";
+import { IWhitelistHandler } from "./authentication/network_whitelist/IWhitelistHandler";
 
 export interface ServerVariables {
   logger: IRequestLogger;

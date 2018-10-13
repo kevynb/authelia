@@ -4,7 +4,8 @@ import Endpoints = require("../../../../../shared/api");
 import BluebirdPromise = require("bluebird");
 import { AuthenticationSessionHandler } from "../../AuthenticationSessionHandler";
 import { ServerVariables } from "../../ServerVariables";
-import { MethodCalculator } from "../../authentication/MethodCalculator";
+import { Level } from "../../authentication/Level";
+import { getRedirectParam } from "../helpers";
 
 const TEMPLATE_NAME = "secondfactor";
 
@@ -13,12 +14,20 @@ export default function (vars: ServerVariables) {
     : BluebirdPromise<void> {
 
     return new BluebirdPromise(function (resolve, reject) {
-      const isSingleFactorMode: boolean = MethodCalculator.isSingleFactorOnlyMode(
-        vars.config.authentication_methods);
       const authSession = AuthenticationSessionHandler.get(req, vars.logger);
-      if (isSingleFactorMode
-        || (authSession.first_factor && authSession.second_factor)) {
-        res.redirect(Endpoints.LOGGED_IN);
+
+      if (authSession.authentication_level == Level.NOT_AUTHENTICATED) {
+        res.redirect(Endpoints.FIRST_FACTOR_GET);
+        return;
+      } else if (authSession.authentication_level == Level.SECOND_FACTOR) {
+        const redirectUrl = getRedirectParam(req);
+        if (redirectUrl) {
+          res.redirect(redirectUrl);
+        } else if (vars.config.default_redirection_url) {
+          res.redirect(vars.config.default_redirection_url);
+        } else {
+          res.redirect(Endpoints.LOGGED_IN);
+        }
         resolve();
         return;
       }

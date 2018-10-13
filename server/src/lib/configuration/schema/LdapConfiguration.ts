@@ -12,7 +12,6 @@ export interface LdapConfiguration {
 
   group_name_attribute?: string;
   mail_attribute?: string;
-  network_whitelist_attribute?: string;
 
   user: string; // admin username
   password: string; // admin password
@@ -35,10 +34,6 @@ export function complete(configuration: LdapConfiguration): LdapConfiguration {
 
   if (!newConfiguration.mail_attribute) {
     newConfiguration.mail_attribute = "mail";
-  }
-
-  if (!newConfiguration.network_whitelist_attribute) {
-    newConfiguration.network_whitelist_attribute = "networkAddresses";
   }
 
   return newConfiguration;

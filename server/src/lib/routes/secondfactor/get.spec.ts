@@ -7,6 +7,7 @@ import ExpressMock = require("../../stubs/express.spec");
 import Assert = require("assert");
 import Endpoints = require("../../../../../shared/api");
 import BluebirdPromise = require("bluebird");
+import { Level } from "../../authentication/Level";
 
 describe("routes/secondfactor/get", function () {
   let mocks: ServerVariablesMock;
@@ -25,40 +26,47 @@ describe("routes/secondfactor/get", function () {
     req.session = {
       auth: {
         userid: "user",
-        first_factor: true,
-        second_factor: false
+        authentication_level: Level.FIRST_FACTOR
       }
     };
   });
 
   describe("test redirection", function () {
-    it("should redirect to already logged in page if server is in single_factor mode", function () {
-      vars.config.authentication_methods.default_method = "single_factor";
-      return SecondFactorGet(vars)(req as any, res as any)
-        .then(function () {
-          Assert(res.redirect.calledWith(Endpoints.LOGGED_IN));
-          return BluebirdPromise.resolve();
-        });
+    describe("not authenticated", () => {
+      it("should redirect to first factor page", function () {
+        req.session.authentication_level = Level.NOT_AUTHENTICATED;
+        return SecondFactorGet(vars)(req as any, res as any)
+          .then(function () {
+            Assert(res.redirect.calledWith(Endpoints.FIRST_FACTOR_GET));
+            return BluebirdPromise.resolve();
+          });
+      });
     });
 
-    it("should redirect to already logged in page if user already authenticated", function () {
-      vars.config.authentication_methods.default_method = "two_factor";
-      req.session.auth.second_factor = true;
-      return SecondFactorGet(vars)(req as any, res as any)
-        .then(function () {
-          Assert(res.redirect.calledWith(Endpoints.LOGGED_IN));
-          return BluebirdPromise.resolve();
-        });
+    describe("authenticated up to first factor", () => {
+      it("should serve second factor page", () => {
+        req.session.authentication_level = Level.FIRST_FACTOR;
+        req.session.auth.second_factor = false;
+        return SecondFactorGet(vars)(req as any, res as any)
+          .then(function () {
+            Assert(res.render.calledWith("secondfactor"));
+            return BluebirdPromise.resolve();
+          });
+      });
     });
 
-    it("should render second factor page", function () {
-      vars.config.authentication_methods.default_method = "two_factor";
-      req.session.auth.second_factor = false;
-      return SecondFactorGet(vars)(req as any, res as any)
-        .then(function () {
-          Assert(res.render.calledWith("secondfactor"));
-          return BluebirdPromise.resolve();
+    describe("authenticated up to second factor", () => {
+      describe("default redirection url is defined", () => {
+        it("should redirect to default redirection url", () => {
+          vars.config.default_redirection_url = "http://redirect";
+          req.session.authentication_level = Level.SECOND_FACTOR;
+          return SecondFactorGet(vars)(req as any, res as any)
+            .then(function () {
+              Assert(res.redirect.calledWith(vars.config.default_redirection_url));
+              return BluebirdPromise.resolve();
+            });
         });
+      });
     });
   });
 });

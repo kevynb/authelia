@@ -95,7 +95,7 @@ export default class RegistrationHandler implements IdentityValidable {
         return that.userDataStore.saveTOTPSecret(userId, secret);
       })
       .then(function () {
-        AuthenticationSessionHandler.reset(req);
+        AuthenticationSessionHandler.reset(req, that.logger);
 
         res.render(Constants.TEMPLATE_NAME, {
           base32_secret: secret.base32,

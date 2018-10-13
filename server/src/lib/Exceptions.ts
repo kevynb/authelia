@@ -39,6 +39,14 @@ export class AccessDeniedError extends Error {
   }
 }
 
+export class NotAuthenticatedError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = "NotAuthenticatedError";
+    (<any>Object).setPrototypeOf(this, NotAuthenticatedError.prototype);
+  }
+}
+
 export class AuthenticationRegulationError extends Error {
   constructor(message?: string) {
     super(message);

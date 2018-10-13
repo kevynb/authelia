@@ -59,7 +59,7 @@ users:
     groups:
       - admins
       - dev
-`
+`;
 
 function createTmpFileFrom(yaml: string) {
   const tmpFileAsync = Bluebird.promisify(Tmp.file);

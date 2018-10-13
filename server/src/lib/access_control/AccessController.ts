@@ -2,17 +2,14 @@ import { ACLConfiguration, ACLRule } from "../configuration/schema/AclConfigurat
 import { IAccessController } from "./IAccessController";
 import { Winston } from "../../../types/Dependencies";
 import { MultipleDomainMatcher } from "./MultipleDomainMatcher";
-import { WhitelistValue } from "../authentication/whitelist/WhitelistHandler";
-
+import { Resource } from "./Resource";
+import { Identity } from "./Identity";
+import { Level } from "../authentication/Level";
 
 enum AccessReturn {
   NO_MATCHING_RULES,
-  MATCHING_RULES_AND_ACCESS,
-  MATCHING_RULES_AND_NO_ACCESS
-}
-
-function AllowedRule(rule: ACLRule) {
-  return rule.policy == "allow";
+  GRANT_ACCESS,
+  DENY_ACCESS
 }
 
 function MatchDomain(actualDomain: string) {
@@ -43,44 +40,35 @@ export class AccessController implements IAccessController {
     this.configuration = configuration;
   }
 
-  private SelectPolicy(whitelisted: WhitelistValue, isSecondFactorRequired: boolean) {
-    const that = this;
-    return function (rule: ACLRule): ("allow" | "deny") {
-      if (whitelisted > WhitelistValue.NOT_WHITELISTED) {
-        const whitelistPolicy = rule.whitelist_policy || that.configuration.default_whitelist_policy;
-        if (whitelistPolicy == "deny" &&
-          whitelisted > (isSecondFactorRequired ? WhitelistValue.WHITELISTED_AND_AUTHENTICATED_FIRSTFACTOR : WhitelistValue.WHITELISTED))
-          return rule.policy;
-        return whitelistPolicy;
-      }
-      return rule.policy;
-    };
-  }
-
-  private isAccessAllowedInRules(rules: ACLRule[], whitelisted: WhitelistValue, isSecondFactorRequired: boolean): AccessReturn {
+  private isAccessAllowedInRules(rules: ACLRule[], level: Level): AccessReturn {
     if (!rules)
       return AccessReturn.NO_MATCHING_RULES;
 
-    const policies = rules.map(this.SelectPolicy(whitelisted, isSecondFactorRequired));
+    const policies = rules.map(r => r.policy);
 
     if (rules.length > 0) {
-      if (policies[0] == "allow") {
-        return AccessReturn.MATCHING_RULES_AND_ACCESS;
-      }
-      else {
-        return AccessReturn.MATCHING_RULES_AND_NO_ACCESS;
+      if (policies[0] == "bypass") {
+        return AccessReturn.GRANT_ACCESS;
+      } else if (policies[0] == "first_factor" && level >= Level.FIRST_FACTOR) {
+        return AccessReturn.GRANT_ACCESS;
+      } else if (policies[0] == "second_factor" && level >= Level.SECOND_FACTOR) {
+        return AccessReturn.GRANT_ACCESS;
+      } else {
+        return AccessReturn.DENY_ACCESS;
       }
     }
     return AccessReturn.NO_MATCHING_RULES;
   }
 
-  private getMatchingUserRules(user: string, domain: string, resource: string): ACLRule[] {
+  private getMatchingUserRules(user: string, resource: Resource): ACLRule[] {
     const userRules = this.configuration.users[user];
     if (!userRules) return [];
-    return userRules.filter(MatchDomain(domain)).filter(MatchResource(resource));
+    return userRules
+      .filter(MatchDomain(resource.domain))
+      .filter(MatchResource(resource.path));
   }
 
-  private getMatchingGroupRules(groups: string[], domain: string, resource: string): ACLRule[] {
+  private getMatchingGroupRules(groups: string[], resource: Resource): ACLRule[] {
     const that = this;
     // There is no ordering between group rules. That is, when a user belongs to 2 groups, there is no
     // guarantee one set of rules has precedence on the other one.
@@ -89,41 +77,47 @@ export class AccessController implements IAccessController {
       if (groupRules) rules = rules.concat(groupRules);
       return rules;
     }, []);
-    return groupRules.filter(MatchDomain(domain)).filter(MatchResource(resource));
+    return groupRules
+      .filter(MatchDomain(resource.domain))
+      .filter(MatchResource(resource.path));
   }
 
-  private getMatchingAllRules(domain: string, resource: string): ACLRule[] {
+  private getMatchingAllRules(resource: Resource): ACLRule[] {
     const rules = this.configuration.any;
     if (!rules) return [];
-    return rules.filter(MatchDomain(domain)).filter(MatchResource(resource));
+    return rules
+      .filter(MatchDomain(resource.domain))
+      .filter(MatchResource(resource.path));
   }
 
-  private isAccessAllowedDefaultPolicy(): boolean {
-    return this.configuration.default_policy == "allow";
+  private isAccessAllowedDefaultPolicy(level: Level): boolean {
+    return this.configuration.default_policy == "bypass" ||
+      (this.configuration.default_policy == "first_factor" && level >= Level.FIRST_FACTOR) ||
+      (this.configuration.default_policy == "second_factor" && level >= Level.SECOND_FACTOR);
   }
 
-  private isAccessAllowedDefaultWhitelistPolicy(): boolean {
-    return this.configuration.default_whitelist_policy == "allow";
-  }
-
-  isAccessAllowed(domain: string, resource: string, user: string, groups: string[], whitelisted: WhitelistValue, isSecondFactorRequired: boolean): boolean {
+  /**
+   * Check if a user has access to the given resource.
+   *
+   * @param resource The resource to check permissions for.
+   * @param user  The user to check permissions for.
+   * @param groups The groups of the user to check permissions for.
+   * @return true if the user has access, false otherwise.
+   */
+  isAccessAllowed(resource: Resource, identity: Identity, level: Level): boolean {
     if (!this.configuration) return true;
 
-    const allRules = this.getMatchingAllRules(domain, resource);
-    const groupRules = this.getMatchingGroupRules(groups, domain, resource);
-    const userRules = this.getMatchingUserRules(user, domain, resource);
+    const allRules = this.getMatchingAllRules(resource);
+    const groupRules = this.getMatchingGroupRules(identity.groups, resource);
+    const userRules = this.getMatchingUserRules(identity.user, resource);
     const rules = allRules.concat(groupRules).concat(userRules).reverse();
 
-    const access = this.isAccessAllowedInRules(rules, whitelisted, isSecondFactorRequired);
-    if (access == AccessReturn.MATCHING_RULES_AND_ACCESS)
+    const access = this.isAccessAllowedInRules(rules, level);
+    if (access == AccessReturn.GRANT_ACCESS)
       return true;
-    else if (access == AccessReturn.MATCHING_RULES_AND_NO_ACCESS)
+    else if (access == AccessReturn.DENY_ACCESS)
       return false;
 
-    if (whitelisted) {
-      return this.isAccessAllowedDefaultWhitelistPolicy();
-    }
-
-    return this.isAccessAllowedDefaultPolicy();
+    return this.isAccessAllowedDefaultPolicy(level);
   }
 }

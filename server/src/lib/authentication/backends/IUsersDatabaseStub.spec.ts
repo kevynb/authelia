@@ -3,7 +3,6 @@ import Sinon = require("sinon");
 
 import { IUsersDatabase } from "./IUsersDatabase";
 import { GroupsAndEmails } from "./GroupsAndEmails";
-import { UserAndNetworkAddresses } from "./UserAndNetworkAddresses";
 
 export class IUsersDatabaseStub implements IUsersDatabase {
   checkUserPasswordStub: Sinon.SinonStub;
@@ -30,10 +29,6 @@ export class IUsersDatabaseStub implements IUsersDatabase {
 
   getGroups(username: string): Bluebird<string[]> {
     return this.getGroupsStub(username);
-  }
-
-  getUserAndNetworkAddresses(): Bluebird<UserAndNetworkAddresses[]> {
-    return this.getUserAndNetworkAddressesStub();
   }
 
   updatePassword(username: string, newPassword: string): Bluebird<void> {

@@ -14,7 +14,7 @@ export default function (vars: ServerVariables) {
   return function(req: express.Request, res: express.Response) {
     const redirect_param = getRedirectParam(req);
     const redirect_url = redirect_param || "/";
-    AuthenticationSessionHandler.reset(req);
+    AuthenticationSessionHandler.reset(req, vars.logger);
     res.redirect(redirect_url);
   };
 }

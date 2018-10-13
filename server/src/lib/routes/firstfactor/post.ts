@@ -11,11 +11,10 @@ import { AuthenticationSessionHandler } from "../../AuthenticationSessionHandler
 import Constants = require("../../../../../shared/constants");
 import { DomainExtractor } from "../../utils/DomainExtractor";
 import UserMessages = require("../../../../../shared/UserMessages");
-import { MethodCalculator } from "../../authentication/MethodCalculator";
 import { ServerVariables } from "../../ServerVariables";
 import { AuthenticationSession } from "../../../../types/AuthenticationSession";
 import { GroupsAndEmails } from "../../authentication/backends/GroupsAndEmails";
-import { WhitelistValue } from "../../authentication/whitelist/WhitelistHandler";
+import { Level } from "../../authentication/Level";
 
 export default function (vars: ServerVariables) {
   return function (req: express.Request, res: express.Response)
@@ -41,8 +40,9 @@ export default function (vars: ServerVariables) {
         vars.logger.info(req,
           "LDAP binding successful. Retrieved information about user are %s",
           JSON.stringify(groupsAndEmails));
+
         authSession.userid = username;
-        authSession.first_factor = true;
+        authSession.authentication_level = Level.FIRST_FACTOR;
         const redirectUrl = req.query[Constants.REDIRECT_QUERY_PARAM] !== "undefined"
           // Fuck, don't know why it is a string!
           ? req.query[Constants.REDIRECT_QUERY_PARAM]
@@ -51,10 +51,6 @@ export default function (vars: ServerVariables) {
         const emails: string[] = groupsAndEmails.emails;
         const groups: string[] = groupsAndEmails.groups;
         const redirectHost: string = DomainExtractor.fromUrl(redirectUrl);
-        const authMethod = MethodCalculator.compute(
-          vars.config.authentication_methods, redirectHost);
-        vars.logger.debug(req, "Authentication method for \"%s\" is \"%s\"",
-          redirectHost, authMethod);
 
         if (emails.length > 0)
           authSession.email = emails[0];
@@ -63,31 +59,15 @@ export default function (vars: ServerVariables) {
         vars.logger.debug(req, "Mark successful authentication to regulator.");
         vars.regulator.mark(username, true);
 
-        if (authMethod == "single_factor") {
-          if (authSession.whitelisted > WhitelistValue.NOT_WHITELISTED)
-            authSession.whitelisted = WhitelistValue.WHITELISTED_AND_AUTHENTICATED_FIRSTFACTOR;
-          let newRedirectionUrl: string = redirectUrl;
-          if (!newRedirectionUrl)
-            newRedirectionUrl = Endpoint.LOGGED_IN;
-          res.send({
-            redirect: newRedirectionUrl
-          });
-          vars.logger.debug(req, "Redirect to '%s'", redirectUrl);
+        let newRedirectUrl = Endpoint.SECOND_FACTOR_GET;
+        if (redirectUrl) {
+          newRedirectUrl += "?" + Constants.REDIRECT_QUERY_PARAM + "="
+            + redirectUrl;
         }
-        else if (authMethod == "two_factor") {
-          let newRedirectUrl = Endpoint.SECOND_FACTOR_GET;
-          if (redirectUrl) {
-            newRedirectUrl += "?" + Constants.REDIRECT_QUERY_PARAM + "="
-              + redirectUrl;
-          }
-          vars.logger.debug(req, "Redirect to '%s'", newRedirectUrl);
-          res.send({
-            redirect: newRedirectUrl
-          });
-        }
-        else {
-          return BluebirdPromise.reject(new Error("Unknown authentication method for this domain."));
-        }
+        vars.logger.debug(req, "Redirect to '%s'", newRedirectUrl);
+        res.send({
+          redirect: newRedirectUrl
+        });
         return BluebirdPromise.resolve();
       })
       .catch(Exceptions.LdapBindError, function (err: Error) {

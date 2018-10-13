@@ -1,5 +1,7 @@
-import { WhitelistValue } from "../authentication/whitelist/WhitelistHandler";
+import { Resource } from "./Resource";
+import { Identity } from "./Identity";
+import { Level } from "../authentication/Level";
 
 export interface IAccessController {
-  isAccessAllowed(domain: string, resource: string, user: string, groups: string[], whitelisted: WhitelistValue, isSecondFactorRequired: boolean): boolean;
+  isAccessAllowed(resource: Resource, identity: Identity, level: Level): boolean;
 }

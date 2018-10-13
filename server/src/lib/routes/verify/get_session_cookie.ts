@@ -8,12 +8,11 @@ import { Configuration } from "../../configuration/schema/Configuration";
 import Constants = require("../../../../../shared/constants");
 import { DomainExtractor } from "../../utils/DomainExtractor";
 import { ServerVariables } from "../../ServerVariables";
-import { MethodCalculator } from "../../authentication/MethodCalculator";
 import { IRequestLogger } from "../../logging/IRequestLogger";
 import { AuthenticationSession } from "../../../../types/AuthenticationSession";
 import { AuthenticationSessionHandler } from "../../AuthenticationSessionHandler";
-import { WhitelistValue } from "../../authentication/whitelist/WhitelistHandler";
 import AccessControl from "./access_control";
+import { Level } from "../../authentication/Level";
 
 const FIRST_FACTOR_NOT_VALIDATED_MESSAGE = "First factor not yet validated";
 const SECOND_FACTOR_NOT_VALIDATED_MESSAGE = "Second factor not yet validated";
@@ -40,55 +39,34 @@ function verify_inactivity(req: Express.Request,
   }
 
   logger.debug(req, "Session has been reset after too long inactivity period.");
-  AuthenticationSessionHandler.reset(req);
+  AuthenticationSessionHandler.reset(req, logger);
   return BluebirdPromise.reject(new Error("Inactivity period exceeded."));
 }
 
 export default function (req: Express.Request, res: Express.Response,
   vars: ServerVariables, authSession: AuthenticationSession)
   : BluebirdPromise<{ username: string, groups: string[] }> {
-  let username: string;
-  let groups: string[];
-  let domain: string;
-  let originalUri: string;
+  return BluebirdPromise.resolve()
+    .then(() => {
+      const username = authSession.userid;
+      const groups = authSession.groups;
 
-  return new BluebirdPromise(function (resolve, reject) {
-    username = authSession.userid;
-    groups = authSession.groups;
+      if (!authSession.userid) {
+        return BluebirdPromise.reject(new Exceptions.NotAuthenticatedError(
+          "User is not authenticated."));
+      }
 
-    if (!authSession.userid) {
-      return reject(new Exceptions.AccessDeniedError(
-        Util.format("%s: %s.", FIRST_FACTOR_NOT_VALIDATED_MESSAGE,
-          "userid is missing")));
-    }
+      const originalUrl = ObjectPath.get<Express.Request, string>(req, "headers.x-original-url");
+      const originalUri =
+        ObjectPath.get<Express.Request, string>(req, "headers.x-original-uri");
 
-    const originalUrl = ObjectPath.get<Express.Request, string>(req, "headers.x-original-url");
-    originalUri =
-      ObjectPath.get<Express.Request, string>(req, "headers.x-original-uri");
+      const domain = DomainExtractor.fromUrl(originalUrl);
+      vars.logger.debug(req, "domain=%s, request_uri=%s, user=%s, groups=%s", domain,
+        originalUri, username, groups.join(","));
 
-    domain = DomainExtractor.fromUrl(originalUrl);
-    const authenticationMethod =
-      MethodCalculator.compute(vars.config.authentication_methods, domain);
-    vars.logger.debug(req, "domain=%s, request_uri=%s, user=%s, groups=%s", domain,
-      originalUri, username, groups.join(","));
-
-    if (authSession.whitelisted > WhitelistValue.NOT_WHITELISTED)
-      return resolve();
-
-    if (!authSession.first_factor)
-      return reject(new Exceptions.AccessDeniedError(
-        Util.format("%s: %s.", FIRST_FACTOR_NOT_VALIDATED_MESSAGE,
-          "first factor is false")));
-
-    if (authenticationMethod == "two_factor" && !authSession.second_factor)
-      return reject(new Exceptions.AccessDeniedError(
-        Util.format("%s: %s.", SECOND_FACTOR_NOT_VALIDATED_MESSAGE,
-          "second factor is false")));
-
-    resolve();
-  })
-    .then(function () {
-      return AccessControl(req, vars, domain, originalUri, username, groups, authSession.whitelisted);
+      const resource = {domain, path: originalUri};
+      const identity = {user: username, groups};
+      return AccessControl(req, resource, identity, authSession.authentication_level, vars);
     })
     .then(function () {
       return verify_inactivity(req, authSession,

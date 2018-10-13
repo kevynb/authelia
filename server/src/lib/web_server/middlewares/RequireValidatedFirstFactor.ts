@@ -4,6 +4,7 @@ import ErrorReplies = require("../../ErrorReplies");
 import { IRequestLogger } from "../../logging/IRequestLogger";
 import { AuthenticationSessionHandler } from "../../AuthenticationSessionHandler";
 import Exceptions = require("../../Exceptions");
+import { Level } from "../../authentication/Level";
 
 export class RequireValidatedFirstFactor {
   static middleware(logger: IRequestLogger) {
@@ -12,10 +13,11 @@ export class RequireValidatedFirstFactor {
 
       return new BluebirdPromise<void>(function (resolve, reject) {
         const authSession = AuthenticationSessionHandler.get(req, logger);
-        if (!authSession.userid || !authSession.first_factor)
+        if (authSession.authentication_level < Level.FIRST_FACTOR) {
           return reject(
             new Exceptions.FirstFactorValidationError(
               "First factor has not been validated yet."));
+        }
 
         next();
         resolve();

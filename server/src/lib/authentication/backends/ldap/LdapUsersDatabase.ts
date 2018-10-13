@@ -4,7 +4,6 @@ import { ISessionFactory } from "./ISessionFactory";
 import { LdapConfiguration } from "../../../configuration/schema/LdapConfiguration";
 import { ISession } from "./ISession";
 import { GroupsAndEmails } from "../GroupsAndEmails";
-import { UserAndNetworkAddresses } from "../UserAndNetworkAddresses";
 import Exceptions = require("../../../Exceptions");
 
 type SessionCallback<T> = (session: ISession) => Bluebird<T>;
@@ -88,20 +87,6 @@ export class LdapUsersDatabase implements IUsersDatabase {
     .catch((err) =>
       Bluebird.reject(new Exceptions.LdapError("Failed during groups retrieval: " + err.message))
     );
-  }
-
-  getUserAndNetworkAddresses(): Bluebird<UserAndNetworkAddresses[]> {
-    const that = this;
-    return that.withSession(
-      that.configuration.user,
-      that.configuration.password,
-      (session) => {
-        return session.searchWhitelist();
-      }
-    )
-      .catch((err) =>
-        Bluebird.reject(new Exceptions.LdapError("Failed during whitelisted users retrieval: " + err.message))
-      );
   }
 
   updatePassword(username: string, newPassword: string): Bluebird<void> {

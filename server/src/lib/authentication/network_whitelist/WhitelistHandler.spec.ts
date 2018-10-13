@@ -7,18 +7,12 @@ import { ServerVariables } from "../../ServerVariables";
 
 export class WhitelistHandlerStub implements IWhitelistHandler {
   isWhitelistedStub: Sinon.SinonStub;
-  loginWhitelistUserStub: Sinon.SinonStub;
 
   constructor() {
     this.isWhitelistedStub = Sinon.stub();
-    this.loginWhitelistUserStub = Sinon.stub();
   }
 
-  isWhitelisted(ip: string, usersDatabase: IUsersDatabase): Bluebird<string> {
-    return this.isWhitelistedStub(ip, usersDatabase);
-  }
-
-  loginWhitelistUser(user: string, req: express.Request, vars: ServerVariables): Bluebird<void> {
-    return this.loginWhitelistUserStub(user, req, vars);
+  getUserByIp(ip: string): Bluebird<string> {
+    return this.isWhitelistedStub(ip);
   }
 }

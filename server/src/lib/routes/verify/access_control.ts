@@ -1,35 +1,26 @@
 import Express = require("express");
-import BluebirdPromise = require("bluebird");
+import Bluebird = require("bluebird");
 import Util = require("util");
 import Exceptions = require("../../Exceptions");
 import { ServerVariables } from "../../ServerVariables";
-import { MethodCalculator } from "../../authentication/MethodCalculator";
-import { WhitelistValue } from "../../authentication/whitelist/WhitelistHandler";
+import { Resource } from "../../access_control/Resource";
+import { Identity } from "../../access_control/Identity";
+import { Level } from "../../authentication/Level";
 
-export default function (req: Express.Request, vars: ServerVariables,
-  domain: string, path: string, username: string, groups: string[], whitelisted: WhitelistValue) {
+export default function (
+  req: Express.Request,
+  resource: Resource,
+  identity: Identity,
+  level: Level,
+  vars: ServerVariables): Bluebird<undefined> {
 
-  return new BluebirdPromise(function (resolve, reject) {
-    const authenticationMethod =
-      MethodCalculator.compute(vars.config.authentication_methods, domain);
-
-    const isSecondFactorRequired = authenticationMethod === "two_factor";
-
+  return new Bluebird(function (resolve, reject) {
     const isAllowed = vars.accessController
-      .isAccessAllowed(domain, path, username, groups, whitelisted, isSecondFactorRequired);
+      .isAccessAllowed(resource, identity, level);
 
     if (!isAllowed) {
-      if (whitelisted) {
-        if (isSecondFactorRequired) {
-          return reject(new Exceptions.AccessDeniedError(Util.format(
-            "Whitelisted user \"%s\" must perform second factor authentication for \"%s\"", username, domain)));
-        }
-        return reject(new Exceptions.AccessDeniedError(Util.format(
-          "Whitelisted user \"%s\" must perform authentication on \"%s\"", username, domain)));
-      }
-
-      return reject(new Exceptions.DomainAccessDenied(Util.format(
-        "User '%s' does not have access to '%s'", username, domain)));
+      reject(new Exceptions.AccessDeniedError(Util.format(
+        "Access denied to '%s/%s' for user '%s'", identity.user, resource.domain, resource.path)));
     }
     resolve();
   });

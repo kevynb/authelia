@@ -29,13 +29,12 @@ import { IMongoClient } from "./connectors/mongo/IMongoClient";
 
 import { GlobalDependencies } from "../../types/Dependencies";
 import { ServerVariables } from "./ServerVariables";
-import { MethodCalculator } from "./authentication/MethodCalculator";
 import { MongoClient } from "./connectors/mongo/MongoClient";
 import { IGlobalLogger } from "./logging/IGlobalLogger";
 import { SessionFactory } from "./authentication/backends/ldap/SessionFactory";
 import { IUsersDatabase } from "./authentication/backends/IUsersDatabase";
 import { FileUsersDatabase } from "./authentication/backends/file/FileUsersDatabase";
-import { WhitelistHandler } from "./authentication/whitelist/WhitelistHandler";
+import { WhitelistHandler } from "./authentication/network_whitelist/WhitelistHandler";
 
 class UserDataStoreFactory {
   static create(config: Configuration.Configuration, globalLogger: IGlobalLogger): BluebirdPromise<UserDataStore> {
@@ -98,7 +97,7 @@ export class ServerVariablesInitializer {
       deps.speakeasy);
     const usersDatabase = this.createUsersDatabase(
       config, deps);
-    const whitelistHandler = new WhitelistHandler();
+    const whitelistHandler = new WhitelistHandler(config.network_binding);
 
     return UserDataStoreFactory.create(config, globalLogger)
       .then(function (userDataStore: UserDataStore) {

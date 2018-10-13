@@ -2,7 +2,6 @@ import Bluebird = require("bluebird");
 import Sinon = require("sinon");
 
 import { ISession } from "./ISession";
-import { UserAndNetworkAddresses } from "../UserAndNetworkAddresses";
 
 export class SessionStub implements ISession {
   openStub: Sinon.SinonStub;
@@ -41,10 +40,6 @@ export class SessionStub implements ISession {
 
   searchGroups(username: string): Bluebird<string[]> {
     return this.searchGroupsStub(username);
-  }
-
-  searchWhitelist(): Bluebird<UserAndNetworkAddresses[]> {
-    return this.searchWhitelistStub();
   }
 
   modifyPassword(username: string, newPassword: string): Bluebird<void> {

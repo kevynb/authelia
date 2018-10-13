@@ -9,7 +9,7 @@ import { RegulatorStub } from "./regulation/RegulatorStub.spec";
 import { TotpHandlerStub } from "./authentication/totp/TotpHandlerStub.spec";
 import { UserDataStoreStub } from "./storage/UserDataStoreStub.spec";
 import { U2fHandlerStub } from "./authentication/u2f/U2fHandlerStub.spec";
-import { WhitelistHandlerStub } from "./authentication/whitelist/WhitelistHandler.spec";
+import { WhitelistHandlerStub } from "./authentication/network_whitelist/WhitelistHandler.spec";
 
 export interface ServerVariablesMock {
   accessController: AccessControllerStub;
@@ -30,9 +30,6 @@ export class ServerVariablesMockBuilder {
       accessController: new AccessControllerStub(),
       config: {
         access_control: {},
-        authentication_methods: {
-          default_method: "two_factor"
-        },
         totp: {
           issuer: "authelia.com"
         },

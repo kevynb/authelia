@@ -70,9 +70,6 @@ authentication_backend:
     # The attribute holding the mail address of the user
     mail_attribute: mail
 
-    # The attribute holding the whitelisted addresses of the user
-    network_whitelist_attribute: networkAddresses
-
     # The username and password of the admin user.
     user: cn=admin,dc=example,dc=com
     password: password
@@ -88,25 +85,6 @@ authentication_backend:
   ## file:
   ##   path: ./users_database.yml
 
-
-# Authentication methods
-#
-# Authentication methods can be defined per subdomain.
-# There are currently two available methods: "single_factor" and "two_factor"
-#
-# Note: by default a domain uses "two_factor" method.
-#
-# Note: 'per_subdomain_methods' is a dictionary where keys must be subdomains and
-# values must be one of the two possible methods.
-#
-# Note: 'per_subdomain_methods' is optional.
-#
-# Note: authentication_methods is optional. If it is not set all sub-domains
-# are protected by two factors.
-authentication_methods:
-  default_method: two_factor
-  per_subdomain_methods:
-    single_factor.example.com: single_factor
 
 
 # Access Control
@@ -147,17 +125,13 @@ access_control:
   # in the `any`, `groups` or `users` category.
   default_policy: deny
 
-  # Default whitelist policy can either be `allow` or `deny`.
-  # It is the whitelist policy applied to any resource which will
-  # if it has not been overridden in the `any`, `groups` or `users` category.
-  # This will bypass all authentication
-  default_whitelist_policy: deny
-
-  # The rules that apply to anyone.
+  # The rules applied to anyone.
   # The value is a list of rules.
   any:
     - domain: public.example.com
-      policy: allow
+      policy: bypass
+    - domain: single_factor.example.com
+      policy: single_factor
   
   # Group-based rules. The key is a group name and the value
   # is a list of rules.
@@ -165,15 +139,13 @@ access_control:
     admin:
       # All resources in all domains
       - domain: '*.example.com'
-        policy: allow
-        whitelist_policy: allow
+        policy: two_factor
       # Except mx2.mail.example.com (it restricts the first rule)
       - domain: 'mx2.mail.example.com'
         policy: deny
     dev:
       - domain: dev.example.com
-        policy: allow
-        whitelist_policy: allow
+        policy: two_factor
         resources:
           - '^/groups/dev/.*$'
   
@@ -182,23 +154,34 @@ access_control:
   users:
     john:
       - domain: dev.example.com
-        policy: allow
-        whitelist_policy: allow
+        policy: two_factor
         resources:
           - '^/users/john/.*$' 
     harry:
       - domain: dev.example.com
-        policy: allow
+        policy: two_factor
         resources:
           - '^/users/harry/.*$'
     bob:
       - domain: '*.mail.example.com'
-        policy: allow
+        policy: two_factor
       - domain: 'dev.example.com'
-        policy: allow
+        policy: two_factor
         resources:
           - '^/users/bob/.*$'
 
+network_binding:
+  '10.0.0.1': john
+  '10.0.0.2': harry
+
+whitelist_access_control:
+  default_policy: deny
+  users:
+    john:
+      - domain: dev.example.com
+        policy: bypass
+        resources:
+          - '^/users/john/.*$' 
 
 # Configuration of session cookies
 # 

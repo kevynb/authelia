@@ -1,11 +1,10 @@
 import U2f = require("u2f");
-import { WhitelistValue } from "../src/lib/authentication/whitelist/WhitelistHandler";
+import { Level } from "../src/lib/authentication/Level";
 
 export interface AuthenticationSession {
   userid: string;
-  first_factor: boolean;
-  second_factor: boolean;
-  whitelisted: WhitelistValue;
+  authentication_level: Level;
+  recognized_by_ip: boolean; // The user has been recognized from its IP.
   last_activity_datetime: number;
   identity_check?: {
     challenge: string;

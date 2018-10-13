@@ -5,12 +5,11 @@ import U2f = require("u2f");
 import BluebirdPromise = require("bluebird");
 import { AuthenticationSession } from "../../types/AuthenticationSession";
 import { IRequestLogger } from "./logging/IRequestLogger";
-import { WhitelistValue } from "./authentication/whitelist/WhitelistHandler";
+import { Level } from "./authentication/Level";
 
 const INITIAL_AUTHENTICATION_SESSION: AuthenticationSession = {
-  first_factor: false,
-  second_factor: false,
-  whitelisted: WhitelistValue.NOT_WHITELISTED,
+  authentication_level: Level.NOT_AUTHENTICATED,
+  recognized_by_ip: false,
   last_activity_datetime: undefined,
   userid: undefined,
   email: undefined,
@@ -22,7 +21,9 @@ const INITIAL_AUTHENTICATION_SESSION: AuthenticationSession = {
 };
 
 export class AuthenticationSessionHandler {
-  static reset(req: express.Request): void {
+  static reset(req: express.Request, logger: IRequestLogger): void {
+    const msg = "Session has been reset...";
+    logger.debug(req, msg);
     req.session.auth = Object.assign({}, INITIAL_AUTHENTICATION_SESSION, {});
 
     // Initialize last activity with current time
@@ -37,8 +38,7 @@ export class AuthenticationSessionHandler {
     }
 
     if (!req.session.auth) {
-      logger.debug(req, "Authentication session %s was undefined. Resetting.", req.sessionID);
-      AuthenticationSessionHandler.reset(req);
+      AuthenticationSessionHandler.reset(req, logger);
     }
 
     return req.session.auth;
