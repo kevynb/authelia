@@ -5,9 +5,10 @@ import { IUserDataStore } from "./storage/IUserDataStore";
 import { INotifier } from "./notifiers/INotifier";
 import { IRegulator } from "./regulation/IRegulator";
 import { Configuration } from "./configuration/schema/Configuration";
-import { IAccessController } from "./access_control/IAccessController";
 import { IUsersDatabase } from "./authentication/backends/IUsersDatabase";
-import { IWhitelistHandler } from "./authentication/network_whitelist/IWhitelistHandler";
+import { IRecognizer as INetworkRecognizer } from "./authentication/network/IRecognizer";
+import { NetworkBindingCache } from "./NetworkBindingCache";
+import { IAuthorizer } from "./authorizations/IAuthorizer";
 
 export interface ServerVariables {
   logger: IRequestLogger;
@@ -18,6 +19,6 @@ export interface ServerVariables {
   notifier: INotifier;
   regulator: IRegulator;
   config: Configuration;
-  accessController: IAccessController;
-  whitelistHandler: IWhitelistHandler;
+  authorizer: IAuthorizer;
+  networkRecognizer: INetworkRecognizer;
 }

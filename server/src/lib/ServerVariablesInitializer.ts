@@ -20,8 +20,6 @@ import { INotifier } from "./notifiers/INotifier";
 import { Regulator } from "./regulation/Regulator";
 import { IRegulator } from "./regulation/IRegulator";
 import Configuration = require("./configuration/schema/Configuration");
-import { AccessController } from "./access_control/AccessController";
-import { IAccessController } from "./access_control/IAccessController";
 import { CollectionFactoryFactory } from "./storage/CollectionFactoryFactory";
 import { ICollectionFactory } from "./storage/ICollectionFactory";
 import { MongoCollectionFactory } from "./storage/mongo/MongoCollectionFactory";
@@ -34,7 +32,8 @@ import { IGlobalLogger } from "./logging/IGlobalLogger";
 import { SessionFactory } from "./authentication/backends/ldap/SessionFactory";
 import { IUsersDatabase } from "./authentication/backends/IUsersDatabase";
 import { FileUsersDatabase } from "./authentication/backends/file/FileUsersDatabase";
-import { WhitelistHandler } from "./authentication/network_whitelist/WhitelistHandler";
+import { Authorizer } from "./authorizations/Authorizer";
+import { Recognizer } from "./authentication/network/Recognizer";
 
 class UserDataStoreFactory {
   static create(config: Configuration.Configuration, globalLogger: IGlobalLogger): BluebirdPromise<UserDataStore> {
@@ -91,13 +90,13 @@ export class ServerVariablesInitializer {
       new MailSenderBuilder(Nodemailer);
     const notifier = NotifierFactory.build(
       config.notifier, mailSenderBuilder);
-    const accessController = new AccessController(
-      config.access_control, deps.winston);
-    const totpHandler = new TotpHandler(
-      deps.speakeasy);
-    const usersDatabase = this.createUsersDatabase(
-      config, deps);
-    const whitelistHandler = new WhitelistHandler(config.network_binding);
+    const authorizer = new Authorizer(deps.winston);
+    const totpHandler = new TotpHandler(deps.speakeasy);
+    const usersDatabase = this.createUsersDatabase(config, deps);
+    const networkRecognizer = new Recognizer({
+      "172.16.121.10": "john",
+      "172.16.121.11": "harry"
+    });
 
     return UserDataStoreFactory.create(config, globalLogger)
       .then(function (userDataStore: UserDataStore) {
@@ -105,7 +104,7 @@ export class ServerVariablesInitializer {
           config.regulation.find_time, config.regulation.ban_time);
 
         const variables: ServerVariables = {
-          accessController,
+          authorizer,
           config,
           usersDatabase,
           logger: requestLogger,
@@ -114,7 +113,7 @@ export class ServerVariablesInitializer {
           totpHandler,
           u2f: deps.u2f,
           userDataStore,
-          whitelistHandler,
+          networkRecognizer: networkRecognizer,
         };
         return BluebirdPromise.resolve(variables);
       });

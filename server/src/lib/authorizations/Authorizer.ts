@@ -1,10 +1,10 @@
 import { ACLConfiguration, ACLRule } from "../configuration/schema/AclConfiguration";
-import { IAccessController } from "./IAccessController";
 import { Winston } from "../../../types/Dependencies";
 import { MultipleDomainMatcher } from "./MultipleDomainMatcher";
 import { Resource } from "./Resource";
-import { Identity } from "./Identity";
 import { Level } from "../authentication/Level";
+import { IAuthorizer } from "./IAuthorizer";
+import { Subject } from "./Subject";
 
 enum AccessReturn {
   NO_MATCHING_RULES,
@@ -31,13 +31,11 @@ function MatchResource(actualResource: string) {
   };
 }
 
-export class AccessController implements IAccessController {
+export class Authorizer implements IAuthorizer {
   private logger: Winston;
-  private readonly configuration: ACLConfiguration;
 
-  constructor(configuration: ACLConfiguration, logger_: Winston) {
+  constructor(logger_: Winston) {
     this.logger = logger_;
-    this.configuration = configuration;
   }
 
   private isAccessAllowedInRules(rules: ACLRule[], level: Level): AccessReturn {
@@ -49,9 +47,9 @@ export class AccessController implements IAccessController {
     if (rules.length > 0) {
       if (policies[0] == "bypass") {
         return AccessReturn.GRANT_ACCESS;
-      } else if (policies[0] == "first_factor" && level >= Level.FIRST_FACTOR) {
+      } else if (policies[0] == "one_factor" && level >= Level.FIRST_FACTOR) {
         return AccessReturn.GRANT_ACCESS;
-      } else if (policies[0] == "second_factor" && level >= Level.SECOND_FACTOR) {
+      } else if (policies[0] == "two_factor" && level >= Level.SECOND_FACTOR) {
         return AccessReturn.GRANT_ACCESS;
       } else {
         return AccessReturn.DENY_ACCESS;
@@ -60,20 +58,28 @@ export class AccessController implements IAccessController {
     return AccessReturn.NO_MATCHING_RULES;
   }
 
-  private getMatchingUserRules(user: string, resource: Resource): ACLRule[] {
-    const userRules = this.configuration.users[user];
+  private getMatchingUserRules(
+    policy: ACLConfiguration,
+    user: string,
+    resource: Resource): ACLRule[] {
+
+    const userRules = policy.users[user];
     if (!userRules) return [];
     return userRules
       .filter(MatchDomain(resource.domain))
       .filter(MatchResource(resource.path));
   }
 
-  private getMatchingGroupRules(groups: string[], resource: Resource): ACLRule[] {
+  private getMatchingGroupRules(
+    policy: ACLConfiguration,
+    groups: string[],
+    resource: Resource): ACLRule[] {
+
     const that = this;
     // There is no ordering between group rules. That is, when a user belongs to 2 groups, there is no
     // guarantee one set of rules has precedence on the other one.
     const groupRules = groups.reduce(function (rules: ACLRule[], group: string) {
-      const groupRules = that.configuration.groups[group];
+      const groupRules = policy.groups[group];
       if (groupRules) rules = rules.concat(groupRules);
       return rules;
     }, []);
@@ -82,42 +88,41 @@ export class AccessController implements IAccessController {
       .filter(MatchResource(resource.path));
   }
 
-  private getMatchingAllRules(resource: Resource): ACLRule[] {
-    const rules = this.configuration.any;
+  private getMatchingAllRules(policy: ACLConfiguration, resource: Resource): ACLRule[] {
+    const rules = policy.any;
     if (!rules) return [];
     return rules
       .filter(MatchDomain(resource.domain))
       .filter(MatchResource(resource.path));
   }
 
-  private isAccessAllowedDefaultPolicy(level: Level): boolean {
-    return this.configuration.default_policy == "bypass" ||
-      (this.configuration.default_policy == "first_factor" && level >= Level.FIRST_FACTOR) ||
-      (this.configuration.default_policy == "second_factor" && level >= Level.SECOND_FACTOR);
+  private isAccessAllowedDefaultPolicy(default_policy: string, level: Level): boolean {
+    return default_policy == "bypass" ||
+      (default_policy == "one_factor" && level >= Level.FIRST_FACTOR) ||
+      (default_policy == "two_factor" && level >= Level.SECOND_FACTOR);
   }
 
   /**
    * Check if a user has access to the given resource.
    *
    * @param resource The resource to check permissions for.
-   * @param user  The user to check permissions for.
-   * @param groups The groups of the user to check permissions for.
+   * @param user  The subject to check permissions for.
    * @return true if the user has access, false otherwise.
    */
-  isAccessAllowed(resource: Resource, identity: Identity, level: Level): boolean {
-    if (!this.configuration) return true;
+  isAccessAllowed(policy: ACLConfiguration, resource: Resource, subject: Subject): boolean {
+    if (!policy) return true;
 
-    const allRules = this.getMatchingAllRules(resource);
-    const groupRules = this.getMatchingGroupRules(identity.groups, resource);
-    const userRules = this.getMatchingUserRules(identity.user, resource);
+    const allRules = this.getMatchingAllRules(policy, resource);
+    const groupRules = this.getMatchingGroupRules(policy, subject.groups, resource);
+    const userRules = this.getMatchingUserRules(policy, subject.user, resource);
     const rules = allRules.concat(groupRules).concat(userRules).reverse();
 
-    const access = this.isAccessAllowedInRules(rules, level);
+    const access = this.isAccessAllowedInRules(rules, subject.level);
     if (access == AccessReturn.GRANT_ACCESS)
       return true;
     else if (access == AccessReturn.DENY_ACCESS)
       return false;
 
-    return this.isAccessAllowedDefaultPolicy(level);
+    return this.isAccessAllowedDefaultPolicy(policy.default_policy, subject.level);
   }
 }

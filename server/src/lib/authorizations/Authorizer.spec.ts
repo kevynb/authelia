@@ -1,26 +1,24 @@
 import Assert = require("assert");
 import winston = require("winston");
-import { AccessController } from "./AccessController";
 import { ACLConfiguration } from "../configuration/schema/AclConfiguration";
 import { Resource } from "./Resource";
+import { Authorizer } from "./Authorizer";
 
-describe("access_control/AccessController", function () {
-  let accessController: AccessController;
-  let configuration: ACLConfiguration;
+describe("authorizations/Authorizer", function () {
+  let Authorizer: Authorizer;
 
   describe("configuration is null", function() {
     it("should allow access to anything, anywhere for anybody", function() {
-      configuration = undefined;
-      accessController = new AccessController(configuration, winston);
+      Authorizer = new Authorizer(winston);
 
-      Assert(accessController.isAccessAllowed(
-        {domain: "home.example.com", path: "/"}, "user1", ["group1", "group2"]));
-      Assert(accessController.isAccessAllowed(
-        {domain: "home.example.com", path: "/abc"}, "user1", ["group1", "group2"]));
-      Assert(accessController.isAccessAllowed(
-        {domain: "home.example.com", path: "/"}, "user2", ["group1", "group2"]));
-      Assert(accessController.isAccessAllowed(
-        {domain: "admin.example.com", path: "/"}, "user3", ["group3"]));
+      Assert(Authorizer.isAccessAllowed(
+        undefined, {domain: "home.example.com", path: "/"}, "user1", ["group1", "group2"]));
+      Assert(Authorizer.isAccessAllowed(
+        undefined, {domain: "home.example.com", path: "/abc"}, "user1", ["group1", "group2"]));
+      Assert(Authorizer.isAccessAllowed(
+        undefined, {domain: "home.example.com", path: "/"}, "user2", ["group1", "group2"]));
+      Assert(Authorizer.isAccessAllowed(
+        undefined, {domain: "admin.example.com", path: "/"}, "user3", ["group3"]));
     });
   });
 
@@ -32,7 +30,7 @@ describe("access_control/AccessController", function () {
         users: {},
         groups: {}
       };
-      accessController = new AccessController(configuration, winston);
+      Authorizer = new Authorizer(configuration, winston);
     });
 
     describe("check access control with default policy to deny", function () {
@@ -41,7 +39,7 @@ describe("access_control/AccessController", function () {
       });
 
       it("should deny access when no rule is provided", function () {
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
       });
 
@@ -51,13 +49,13 @@ describe("access_control/AccessController", function () {
           policy: "allow",
           resources: [".*"]
         }];
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "mx1.mail.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "mx1.server.mail.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "mail.example.com", path: "/"}, "user1", ["group1"]));
       });
 
@@ -66,13 +64,13 @@ describe("access_control/AccessController", function () {
           domain: "*.mail.example.com",
           policy: "allow"
         }];
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "mx1.mail.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "mx1.server.mail.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "mail.example.com", path: "/"}, "user1", ["group1"]));
       });
 
@@ -83,11 +81,11 @@ describe("access_control/AccessController", function () {
             policy: "allow",
             resources: [".*"]
           }];
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/another/resource"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "another.home.example.com", path: "/"}, "user1", ["group1"]));
         });
 
@@ -97,11 +95,11 @@ describe("access_control/AccessController", function () {
             policy: "allow",
             resources: [".*"]
           }];
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/"}, "user2", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/another/resource"}, "user2", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "another.home.example.com", path: "/"}, "user2", ["group1"]));
         });
 
@@ -111,23 +109,23 @@ describe("access_control/AccessController", function () {
             policy: "allow",
             resources: ["/private/.*", "^/begin", "/end$"]
           }];
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/private"}, "user1", ["group1"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/private/class"}, "user1", ["group1"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/middle/private/class"}, "user1", ["group1"]));
 
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/begin"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/not/begin"}, "user1", ["group1"]));
 
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/abc/end"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/abc/end/x"}, "user1", ["group1"]));
         });
 
@@ -145,13 +143,13 @@ describe("access_control/AccessController", function () {
             policy: "deny",
             resources: [".*"]
           }];
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home1.example.com", path: "/"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home2.example.com", path: "/"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home3.example.com", path: "/"}, "user1", ["group1"]));
         });
 
@@ -170,11 +168,11 @@ describe("access_control/AccessController", function () {
             resources: ["/my/private/resource"]
           }];
 
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/my/poney"}, "user1", ["group1"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/my/private/duck"}, "user1", ["group1"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/my/private/resource"}, "user1", ["group1"]));
         });
       });
@@ -195,13 +193,13 @@ describe("access_control/AccessController", function () {
             policy: "deny",
             resources: ["^/private$"]
           }];
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/"}, "user1", ["group1", "group2", "group3"]));
-          Assert(accessController.isAccessAllowed(
+          Assert(Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/test"}, "user1", ["group1", "group2", "group3"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "home.example.com", path: "/private"}, "user1", ["group1", "group2", "group3"]));
-          Assert(!accessController.isAccessAllowed(
+          Assert(!Authorizer.isAccessAllowed(
             {domain: "another.home.example.com", path: "/"}, "user1", ["group1", "group2", "group3"]));
         });
       });
@@ -218,13 +216,13 @@ describe("access_control/AccessController", function () {
           policy: "deny",
           resources: ["^/private$"]
         }];
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/public"}, "user1", ["group1", "group2", "group3"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private"}, "user1", ["group1", "group2", "group3"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/public"}, "user4", ["group5"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private"}, "user4", ["group5"]));
       });
     });
@@ -235,11 +233,11 @@ describe("access_control/AccessController", function () {
       });
 
       it("should allow access to anything when no rule is provided", function () {
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/test"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev"}, "user1", ["group1"]));
       });
 
@@ -249,11 +247,11 @@ describe("access_control/AccessController", function () {
           policy: "deny",
           resources: ["/test"]
         }];
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "user1", ["group1"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/test"}, "user1", ["group1"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev"}, "user1", ["group1"]));
       });
     });
@@ -303,55 +301,55 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/b.*$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/public"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/admin"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/josh"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/john"}, "admin", ["admins"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/harry"}, "admin", ["admins"]));
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/public"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev", "admin-private"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/admin"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/josh"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/john"}, "john", ["dev", "admin-private"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/harry"}, "john", ["dev", "admin-private"]));
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/"}, "harry", ["dev"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/public"}, "harry", ["dev"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev"}, "harry", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "harry", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/admin"}, "harry", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/josh"}, "harry", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/john"}, "harry", ["dev"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/private/harry"}, "harry", ["dev"]));
       });
 
@@ -367,9 +365,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/bob$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
 
@@ -385,9 +383,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/bob$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
 
@@ -403,9 +401,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/bob$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
 
@@ -429,9 +427,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/?.*$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
     });
@@ -455,9 +453,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/bob$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
 
@@ -475,9 +473,9 @@ describe("access_control/AccessController", function () {
           resources: ["^/dev/bob$"]
         }];
 
-        Assert(accessController.isAccessAllowed(
+        Assert(Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/john"}, "john", ["dev"]));
-        Assert(!accessController.isAccessAllowed(
+        Assert(!Authorizer.isAccessAllowed(
           {domain: "home.example.com", path: "/dev/bob"}, "john", ["dev"]));
       });
     });

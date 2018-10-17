@@ -20,7 +20,6 @@ export class SessionConfigurationBuilder {
         domain: configuration.session.domain
       },
     };
-    console.log(sessionOptions);
 
     if (configuration.session.redis) {
       let redisOptions;

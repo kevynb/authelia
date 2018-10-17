@@ -3,7 +3,6 @@ import Exceptions = require("../../Exceptions");
 import objectPath = require("object-path");
 import BluebirdPromise = require("bluebird");
 import express = require("express");
-import { AccessController } from "../../access_control/AccessController";
 import { Regulator } from "../../regulation/Regulator";
 import Endpoint = require("../../../../../shared/api");
 import ErrorReplies = require("../../ErrorReplies");

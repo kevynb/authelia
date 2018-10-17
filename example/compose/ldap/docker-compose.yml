@@ -13,6 +13,7 @@ services:
     volumes:
       - ./example/compose/ldap/base.ldif:/etc/ldap.dist/prepopulate/base.ldif
       - ./example/compose/ldap/access.rules:/etc/ldap.dist/prepopulate/access.rules
+      # - ./example/compose/ldap/networkaddresses.schema:/etc/ldap.dist/prepopulate/networkaddresses.schema
     networks:
       - example-network
 

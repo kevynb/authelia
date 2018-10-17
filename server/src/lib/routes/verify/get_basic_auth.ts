@@ -45,8 +45,8 @@ export default function (req: Express.Request, res: Express.Response,
     })
     .then(function (groupsAndEmails) {
       const resource = {domain, path: originalUri};
-      const identity = {user: username, groups: groupsAndEmails.groups};
-      return AccessControl(req, resource, identity, Level.FIRST_FACTOR, vars)
+      const subject = {user: username, groups: groupsAndEmails.groups, level: Level.FIRST_FACTOR};
+      return AccessControl(req, vars.config.access_control, resource, subject, vars)
         .then(() => BluebirdPromise.resolve({
           username: username,
           groups: groupsAndEmails.groups

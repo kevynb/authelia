@@ -3,6 +3,6 @@ import Bluebird = require("bluebird");
 import express = require("express");
 import { ServerVariables } from "../../ServerVariables";
 
-export interface IWhitelistHandler {
-  getUserByIp(ip: string): Bluebird<string>;
+export interface IRecognizer {
+  recognize(ip: string): string;
 }

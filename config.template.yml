@@ -130,7 +130,7 @@ access_control:
     - domain: public.example.com
       policy: bypass
     - domain: single_factor.example.com
-      policy: single_factor
+      policy: one_factor
   
   # Group-based rules. The key is a group name and the value
   # is a list of rules.
